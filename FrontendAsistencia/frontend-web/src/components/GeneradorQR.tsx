@@ -1,13 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../services/api';
+
+interface EstudianteInfo {
+  usuario: {
+    nombre: string;
+  };
+}
 
 interface CredencialQRData {
   id: number;
   estudiante: number;
   uuid: string;
   activo: boolean;
-  estudiante_info: any; // Ajusta el tipo de dato si tienes el modelo de EstudianteSerializer
+  estudiante_info: EstudianteInfo;
   qr_code_base64: string;
+  qr_payload: string;
 }
 
 const GeneradorQR = ({ estudianteId }: { estudianteId: number }) => {

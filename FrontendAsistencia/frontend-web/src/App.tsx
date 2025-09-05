@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.tsx';
+
 import LoginPage from './views/LoginView.tsx';
 import Navbar from './components/Navbar.tsx';
 import Home from './views/Home.tsx';
@@ -18,7 +19,7 @@ import AsignacionesDocenteView from './views/AsignacionesDocenteView.tsx';
 import Docentes from './views/DocentesView.tsx';
 import Admins from './views/AdminView.tsx';
 import Students from './views/EstudianteView.tsx';
-import QrScanner from './components/QrScanner.tsx';
+
 import MisMateriasDocenteView from './views/MisMateriasDocenteView.tsx';
 
 // ¡IMPORTAMOS EL NUEVO COMPONENTE!
@@ -141,7 +142,6 @@ const App: React.FC = () => {
             element={
               <RoleBasedRoute allowedRoles={['estudiante']}>
                 <Navbar />
-                <QrScanner />
               </RoleBasedRoute>
             }
           />

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import api from '../services/api';
+
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -24,7 +24,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     // Verificamos el estado en sessionStorage al cargar la página.
     const token = sessionStorage.getItem('authToken');
-    const role = sessionStorage.getItem('userRole') as AuthState['userRole'];
+    const roleStr = sessionStorage.getItem('userRole');
+    const role = roleStr ? (roleStr as AuthState['userRole']) : null;
     if (token && role) {
       setAuthState({ isAuthenticated: true, userRole: role });
     }
@@ -51,6 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

@@ -1,0 +1,66 @@
+{
+  "expo": {
+    "name": "Asistencia-App",
+    "slug": "Asistencia-App",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/emi-bolivia-logo.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/emi-bolivia-logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/emi-bolivia-logo.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
+      "package": "com.samrex.AsistenciaApp"
+    },
+    "web": {
+      "favicon": "./assets/emi-bolivia-logo.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir que Asistencia-App acceda a la cámara para escanear códigos QR."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/emi-bolivia-logo.png",
+          "color": "#ffffff",
+          "defaultChannel": "default"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permitir que Asistencia-App use tu ubicación para registrar asistencia.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isIosBackgroundLocationEnabled": true
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "18629664-2128-43a4-b50a-f643f2e0875d"
+      }
+    }
+  }
+}

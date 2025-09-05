@@ -118,7 +118,7 @@ const VerAsistenciaAdministradorView: React.FC = () => {
       .then(res => setAsistencias(res.data))
       .catch(() => setError('Error al cargar sesiones'))
       .finally(() => setLoadingAsistencias(false));
-  }, [selectedMateriaId]);
+  }, [selectedMateriaId, selectedStudentId]);
 
   const getEstadoColor = (estado: string) => {
     switch (estado) {

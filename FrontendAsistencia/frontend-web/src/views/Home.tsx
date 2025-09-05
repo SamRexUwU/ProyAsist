@@ -3,14 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+
 import { useNavigate } from 'react-router-dom';
 
 const Home: React.FC = () => {
   const { authState } = useAuth();
-  const [data, setData] = useState<any>(null);
+  
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
   const navigate = useNavigate();
 
   // Efecto para redirigir a los usuarios según su rol

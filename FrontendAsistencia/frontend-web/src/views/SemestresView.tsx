@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import Modal from '../components/Modal';
-import { Link } from 'react-router-dom';
+
 
 interface Semestre {
   id: number;
@@ -42,7 +42,7 @@ const Semestres: React.FC = () => {
       setFilteredSemestres(semestresRes.data);
       setCarreras(carrerasRes.data);
     } catch (err) {
-      setError('No se pudieron cargar los datos.');
+      setError(`No se pudieron cargar los datos.${err}`);
     } finally {
       setLoading(false);
     }

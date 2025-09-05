@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import Modal from '../components/Modal';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+
 
 interface Docente {
   id: number;
@@ -93,12 +93,14 @@ const DocentesView: React.FC = () => {
         setShowAddModal(false);
         setAddFormSuccess('');
       }, 1500);
-    } catch (err: any) {
-      setAddFormError(
-        err?.response?.data?.detail ||
-          JSON.stringify(err?.response?.data) ||
-          'Error al añadir docente.'
-      );
+    } catch (err) {
+      // // setAddFormError(
+      // //   err?.response?.data?.detail ||
+      // //     JSON.stringify(err?.response?.data) ||
+      // //     'Error al añadir docente.'
+      // );
+      console.error(err);
+      setAddFormError('Error al añadir docente.');
     } finally {
       setAddFormLoading(false);
     }

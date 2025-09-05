@@ -167,10 +167,12 @@ const EstudianteView: React.FC = () => {
         setShowAddModal(false);
         setAddFormSuccess('');
       }, 1500);
-    } catch (err: any) {
-      setAddFormError(
-        err?.response?.data?.detail || 'Error al añadir estudiante.'
-      );
+    } catch (err) {
+      // setAddFormError(
+      //   err?.response?.data?.detail || 'Error al añadir estudiante.'
+      // );
+      console.error(err);
+      setAddFormError('Error al añadir estudiante.');
     } finally {
       setAddFormLoading(false);
     }

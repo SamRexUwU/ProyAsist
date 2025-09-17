@@ -5,9 +5,9 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth import authenticate, login, logout
-from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework_simplejwt.tokens import RefreshToken
 import qrcode
 import base64
 import json
@@ -50,14 +50,14 @@ from .models import (
     Usuario, Carrera, Semestre, Materia,
     Estudiante, Docente, Administrador,
     MateriaSemestre, DocenteMateriaSemestre, SesionClase,
-    CredencialQR, PermisoAsistencia, RegistroAsistencia, Reporte, Inscripcion
+    CredencialQR, PermisoAsistencia, RegistroAsistencia, Reporte, Inscripcion, DiaEspecial
 )
 from .serializers import (
     UsuarioSerializer, CarreraSerializer, SemestreSerializer, MateriaSerializer,
     EstudianteSerializer, DocenteSerializer, AdministradorSerializer,
     MateriaSemestreSerializer, DocenteMateriaSemestreSerializer, SesionClaseSerializer,
     CredencialQRSerializer, PermisoAsistenciaSerializer, RegistroAsistenciaSerializer, ReporteSerializer, MisMateriasSerializer,
-    MisMateriasConEstudiantesSerializer, InscripcionSerializer, InscripcionCreateSerializer, MateriaEstudianteSerializer, MateriaSemestreMiniSerializer
+    MisMateriasConEstudiantesSerializer, InscripcionSerializer, InscripcionCreateSerializer, MateriaEstudianteSerializer, MateriaSemestreMiniSerializer, DiaEspecialSerializer
 )
 
 # ----------------------------------------------------
@@ -82,7 +82,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 # Vistas de login/logout siguen siendo APIView o @api_view
 @csrf_exempt
 @api_view(['POST'])
-@permission_classes([AllowAny]) 
+@permission_classes([AllowAny])
 def login_view(request):
     email = request.data.get('email')
     password = request.data.get('password')
@@ -91,7 +91,8 @@ def login_view(request):
 
     if user is not None:
         login(request, user)
-        token, created = Token.objects.get_or_create(user=user)
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
 
         # Lógica final y precisa para determinar el rol del usuario
         role = None
@@ -107,7 +108,8 @@ def login_view(request):
             return Response({'detail': 'Rol de usuario no asignado'}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({
-            'token': token.key,
+            'access': access_token,
+            'refresh': str(refresh),
             'user_id': user.pk,
             'email': user.email,
             'role': role,
@@ -636,7 +638,7 @@ class SesionClaseViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         materia_semestre_id = request.data.get('materia_semestre')
-        
+
         # Verificar que el docente tiene permiso para crear sesiones en esta materia
         if not DocenteMateriaSemestre.objects.filter(
             docente__usuario=self.request.user,
@@ -646,29 +648,38 @@ class SesionClaseViewSet(viewsets.ModelViewSet):
                 {"detail": "No tiene permiso para crear sesiones para esta materia."},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
+
         try:
             materia_semestre_obj = MateriaSemestre.objects.get(id=materia_semestre_id)
-            
+
             dia_materia = materia_semestre_obj.dia_semana
             hora_inicio_materia = materia_semestre_obj.hora_inicio
             hora_fin_materia = materia_semestre_obj.hora_fin
 
             ahora = datetime.now()
+            fecha_actual = ahora.date()
             dias_semana_map = {
                 0: 'Lunes', 1: 'Martes', 2: 'Miércoles', 3: 'Jueves',
                 4: 'Viernes', 5: 'Sábado', 6: 'Domingo'
             }
             dia_actual_nombre = dias_semana_map.get(ahora.weekday())
             hora_actual = ahora.time()
-            
+
+            # 0. Validación de día especial (feriado o día sin clases)
+            if DiaEspecial.es_dia_especial(fecha_actual):
+                dia_especial = DiaEspecial.objects.filter(fecha=fecha_actual).first()
+                return Response(
+                    {"detail": f"No se puede crear sesión en día especial: {dia_especial.get_tipo_display()} - {dia_especial.descripcion}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             # 1. Validación de día
             if dia_materia != dia_actual_nombre:
                 return Response(
                     {"detail": f"No se puede iniciar la sesión. La materia está programada para el día '{dia_materia}', no para hoy '{dia_actual_nombre}'."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            
+
             # 2. Validación de horario (permitir inicio 15 minutos antes)
             hora_inicio_con_gracia = (datetime.combine(date.min, hora_inicio_materia) - timedelta(minutes=15)).time()
 
@@ -682,18 +693,19 @@ class SesionClaseViewSet(viewsets.ModelViewSet):
             return Response(
                 {"detail": "La materia seleccionada no es válida."},
                 status=status.HTTP_400_BAD_REQUEST
-            ) 
-        
+            )
+
         # 3. Establecer los horarios automáticamente
         request.data['hora_inicio'] = hora_inicio_materia
         request.data['hora_fin'] = hora_fin_materia
-        
+        request.data['fecha'] = fecha_actual
+
         # 4. Crear la sesión
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        
+
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
         sesion.save()
         enviar_notificacion_sesion_iniciada(sesion)
@@ -1069,7 +1081,7 @@ class RegistroAsistenciaViewSet(viewsets.ModelViewSet):
             return Response(response_data, status=status.HTTP_400_BAD_REQUEST)
 
         # Validar geofence
-        GEOFENCE_CENTER = {'latitude': -17.397131, 'longitude': -66.220384}
+        GEOFENCE_CENTER = {'latitude': -17.378676, 'longitude': -66.147356}
         GEOFENCE_RADIUS = 500  # 500 metros
         distancia = calcular_distancia(latitude, longitude, GEOFENCE_CENTER['latitude'], GEOFENCE_CENTER['longitude'])
         print(f"Distancia calculada: {distancia} metros")
@@ -1123,6 +1135,18 @@ class RegistroAsistenciaViewSet(viewsets.ModelViewSet):
         current_time = now.time()
         print(f"Buscando sesión: materia_semestre_id={materia_semestre.id}, fecha={today}, hora_actual={current_time}")
         print(f"Zona horaria del servidor: {timezone.get_current_timezone_name()}")
+
+        # Validar si es un día especial
+        if DiaEspecial.es_dia_especial(today):
+            dia_especial = DiaEspecial.objects.filter(fecha=today).first()
+            print(f"Día especial detectado: {dia_especial.get_tipo_display()} - {dia_especial.descripcion}")
+            response_data = {
+                'detail': f'No se puede registrar asistencia en día especial: {dia_especial.get_tipo_display()} - {dia_especial.descripcion}',
+                'tipo_dia_especial': dia_especial.tipo,
+                'descripcion': dia_especial.descripcion
+            }
+            print(f"Enviando respuesta: {response_data}")
+            return Response(response_data, status=status.HTTP_403_FORBIDDEN)
 
         try:
             sesion = SesionClase.objects.get(
@@ -1529,6 +1553,110 @@ def descargar_reporte_pdf(request, reporte_id):
     response['Content-Disposition'] = f'attachment; filename="reporte_{reporte.id}.pdf"'
     return response
 
+@api_view(['GET'])
+@permission_classes([IsAdministrador])
+def resumen_asistencias_general(request):
+    """
+    Devuelve el resumen general de asistencias por materia para todos los estudiantes.
+    Incluye todas las materias, incluso si no tienen sesiones o asistencias.
+    Soporta filtros por carrera y semestre.
+    Solo accesible para administradores.
+    """
+    try:
+        # Obtener parámetros de filtro
+        carrera_id = request.query_params.get('carrera_id')
+        semestre_id = request.query_params.get('semestre_id')
+
+        # Obtener todas las materias o filtrar según parámetros
+        if carrera_id and semestre_id:
+            # Filtrar por carrera y semestre específicos
+            materias = Materia.objects.filter(
+                materias_por_semestre__semestre__carrera_id=carrera_id,
+                materias_por_semestre__semestre_id=semestre_id
+            ).distinct()
+        elif carrera_id:
+            # Filtrar solo por carrera
+            materias = Materia.objects.filter(
+                materias_por_semestre__semestre__carrera_id=carrera_id
+            ).distinct()
+        elif semestre_id:
+            # Filtrar solo por semestre
+            materias = Materia.objects.filter(
+                materias_por_semestre__semestre_id=semestre_id
+            ).distinct()
+        else:
+            # Obtener todas las materias
+            materias = Materia.objects.all()
+
+        resumen_general = []
+
+        for materia in materias:
+            # Obtener todas las sesiones de esta materia
+            sesiones = SesionClase.objects.filter(
+                materia_semestre__materia=materia
+            )
+            total_sesiones = sesiones.count()
+
+            # Obtener todos los estudiantes que deberían tener esta materia
+            estudiantes_relevantes = Estudiante.objects.filter(
+                semestre_actual__materias_ofrecidas__materia=materia
+            ).distinct()
+            total_estudiantes = estudiantes_relevantes.count()
+
+            # Calcular asistencias totales
+            asistencias_totales = RegistroAsistencia.objects.filter(
+                sesion__in=sesiones,
+                estado__in=['PRESENTE', 'RETRASO']
+            ).count()
+
+            # Calcular porcentaje general
+            if total_estudiantes == 0 or total_sesiones == 0:
+                porcentaje_general = 0
+            else:
+                porcentaje_general = (asistencias_totales / (total_sesiones * total_estudiantes)) * 100
+
+            # Obtener información de carrera, semestre y docente para esta materia
+            materia_semestre_info = MateriaSemestre.objects.filter(
+                materia=materia
+            ).select_related(
+                'semestre__carrera'
+            ).prefetch_related(
+                'docentes_asignados__docente__usuario'
+            ).order_by('-semestre__nombre').first()
+
+            carrera_nombre = "N/A"
+            semestre_nombre = "N/A"
+            docente_nombre = "N/A"
+
+            if materia_semestre_info:
+                carrera_nombre = materia_semestre_info.semestre.carrera.nombre
+                semestre_nombre = materia_semestre_info.semestre.nombre
+                docentes = materia_semestre_info.docentes_asignados.all()
+                if docentes.exists():
+                    docente_nombre = docentes[0].docente.usuario.get_full_name()
+
+            resumen_general.append({
+                'materia_id': materia.id,
+                'materia_nombre': materia.nombre,
+                'carrera_nombre': carrera_nombre,
+                'semestre_nombre': semestre_nombre,
+                'docente_nombre': docente_nombre,
+                'total_sesiones': total_sesiones,
+                'total_estudiantes': total_estudiantes,
+                'asistencias_totales': asistencias_totales,
+                'porcentaje_asistencia_general': round(porcentaje_general, 2),
+            })
+
+        # Ordenar por porcentaje de asistencia (menor a mayor)
+        resumen_general.sort(key=lambda x: x['porcentaje_asistencia_general'])
+
+        return Response(resumen_general, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        print(f"Error al calcular resumen general: {e}")
+        return Response({'error': 'Error interno del servidor'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def enviar_notificacion_prueba(request):
@@ -1547,4 +1675,110 @@ def enviar_notificacion_prueba(request):
         return Response({'status': 'notificación enviada'})
     except Exception as e:
         return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAdministrador])
+def get_filtros_asistencia(request):
+    """
+    Devuelve las opciones disponibles para filtrar el resumen de asistencias.
+    Solo accesible para administradores.
+    """
+    try:
+        # Obtener todas las carreras que tienen materias
+        from django.db.models import Exists, OuterRef
+        carreras = Carrera.objects.filter(
+            Exists(MateriaSemestre.objects.filter(semestre__carrera=OuterRef('pk')))
+        ).distinct().values('id', 'nombre')
+
+        # Obtener todos los semestres que tienen materias
+        semestres = Semestre.objects.filter(
+            Exists(MateriaSemestre.objects.filter(semestre=OuterRef('pk')))
+        ).distinct().select_related('carrera').values(
+            'id', 'nombre', 'carrera__id', 'carrera__nombre'
+        )
+
+        return Response({
+            'carreras': list(carreras),
+            'semestres': list(semestres)
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        print(f"Error al obtener filtros: {e}")
+        return Response({'error': 'Error interno del servidor'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class DiaEspecialViewSet(viewsets.ModelViewSet):
+    serializer_class = DiaEspecialSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdministrador]
+    queryset = DiaEspecial.objects.all().select_related('creado_por__usuario')
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filtros opcionales
+        fecha_inicio = self.request.query_params.get('fecha_inicio')
+        fecha_fin = self.request.query_params.get('fecha_fin')
+        tipo = self.request.query_params.get('tipo')
+
+        if fecha_inicio and fecha_fin:
+            queryset = queryset.filter(fecha__gte=fecha_inicio, fecha__lte=fecha_fin)
+        elif fecha_inicio:
+            queryset = queryset.filter(fecha__gte=fecha_inicio)
+        elif fecha_fin:
+            queryset = queryset.filter(fecha__lte=fecha_fin)
+
+        if tipo:
+            queryset = queryset.filter(tipo=tipo)
+
+        return queryset.order_by('-fecha')
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        fecha_str = data.get('fecha')
+        if fecha_str:
+            try:
+                # Parse the date string to date object
+                # Since TIME_ZONE is set to 'America/La_Paz', the date is interpreted in Bolivia's timezone
+                data['fecha'] = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+            except Exception as e:
+                return Response({'error': f'Fecha inválida: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @action(detail=False, methods=['get'], url_path='verificar-fecha', permission_classes=[permissions.IsAuthenticated])
+    def verificar_fecha(self, request):
+        """
+        Verifica si una fecha específica es un día especial
+        URL: /api/dias-especiales/verificar-fecha/?fecha=2024-12-25
+        """
+        fecha_str = request.query_params.get('fecha')
+        if not fecha_str:
+            return Response(
+                {'error': 'Se requiere el parámetro fecha'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            fecha = datetime.strptime(fecha_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response(
+                {'error': 'Formato de fecha inválido. Use YYYY-MM-DD'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        es_especial = DiaEspecial.es_dia_especial(fecha)
+        dia_especial = None
+
+        if es_especial:
+            dia_especial = DiaEspecial.objects.filter(fecha=fecha).first()
+            serializer = self.get_serializer(dia_especial)
+            dia_especial = serializer.data
+
+        return Response({
+            'fecha': fecha_str,
+            'es_dia_especial': es_especial,
+            'dia_especial': dia_especial
+        })
     

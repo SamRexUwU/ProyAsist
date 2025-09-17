@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, FlatList, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { Text, Card, Button, ProgressBar, Modal as PaperModal, Portal } from 'react-native-paper';
 import api from '../services/api';
-import { useAuth } from '../context/AuthContext'; // Asegúrate de tener este contexto
+import { useAuth } from '../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 
 // --- INTERFACES DE DATOS ---
 interface AsistenciaResumen {
@@ -36,6 +37,7 @@ interface AsistenciaDetalle {
 const AsistenciasEstudianteScreen: React.FC = () => {
   // --- ESTADOS ---
   const { authState } = useAuth(); // Usando el contexto de autenticación
+  const navigation = useNavigation() as any;
   const [resumenAsistencias, setResumenAsistencias] = useState<AsistenciaResumen[]>([]);
   const [historialDetalle, setHistorialDetalle] = useState<AsistenciaDetalle[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -195,7 +197,7 @@ const AsistenciasEstudianteScreen: React.FC = () => {
           <Text style={styles.historialFecha}>Fecha: {item.sesion.fecha}</Text>
           <Text style={styles.historialTema}>Tema: {item.sesion.tema || 'No especificado'}</Text>
           <Text style={styles.historialRegistro}>
-            Registro: {new Date(item.fecha_registro).toLocaleString()}
+            Registro: {item.fecha_registro ? new Date(item.fecha_registro).toLocaleString() : 'No registrado'}
           </Text>
         </View>
         <View>
@@ -211,11 +213,27 @@ const AsistenciasEstudianteScreen: React.FC = () => {
   };
 
   // --- RENDERIZADO PRINCIPAL ---
+  if (!authState.isAuthenticated || authState.userRole !== 'estudiante') {
+    return (
+      <View style={styles.noPermissionContainer}>
+        <Text style={styles.noPermissionText}>No tienes permisos.</Text>
+        <Button
+          mode="contained"
+          onPress={() => navigation.navigate('Login')}
+          style={styles.loginButton}
+          buttonColor="#002855"
+        >
+          Ir al Login
+        </Button>
+      </View>
+    );
+  }
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text style={styles.loadingText}>Cargando resumen de asistencias...</Text>
+        <ActivityIndicator size="large" color="#002855" />
+        <Text style={styles.loadingText}>Cargando resumen de asistencias…</Text>
       </View>
     );
   }
@@ -224,15 +242,35 @@ const AsistenciasEstudianteScreen: React.FC = () => {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
+        <Button
+          mode="contained"
+          onPress={() => fetchResumenAsistencias()}
+          style={styles.reloadButton}
+          buttonColor="#002855"
+        >
+          Reintentar
+        </Button>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Text variant="headlineMedium" style={styles.title}>
-        Mis Asistencias
-      </Text>
+      <View style={styles.headerContainer}>
+        <Button
+          icon="arrow-left"
+          mode="text"
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+          labelStyle={styles.backButtonLabel}
+          accessibilityLabel="Botón para regresar"
+        >
+          Regresar
+        </Button>
+        <Text variant="headlineMedium" style={styles.title}>
+          Mis Asistencias
+        </Text>
+      </View>
       
       {resumenAsistencias.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -273,7 +311,7 @@ const AsistenciasEstudianteScreen: React.FC = () => {
             <FlatList
               data={historialDetalle}
               renderItem={renderHistorialItem}
-              keyExtractor={(item) => item.id.toString()}
+              keyExtractor={(item) => item.sesion.id.toString()}
               style={styles.modalList}
               showsVerticalScrollIndicator={false}
             />
@@ -299,9 +337,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc', // Fondo claro institucional
     padding: 16,
   },
-  title: {
-    textAlign: 'center',
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 24,
+  },
+  backButton: {
+    marginRight: 8,
+  },
+  backButtonLabel: {
+    fontSize: 18,
+  },
+  title: {
+    textAlign: 'right',
     color: '#002855',
     fontWeight: 'bold',
     fontSize: 22,
@@ -322,11 +371,14 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
   stat: {
+    width: '48%', // For 2 columns
     alignItems: 'center',
+    marginBottom: 8,
   },
   statNumber: {
     fontSize: 20,
@@ -468,6 +520,27 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     borderRadius: 12,
     overflow: 'hidden',
+  },
+  noPermissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fef2f2',
+    padding: 16,
+  },
+  noPermissionText: {
+    fontSize: 18,
+    color: '#b91c1c',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  loginButton: {
+    marginTop: 8,
+    borderRadius: 8,
+  },
+  reloadButton: {
+    marginTop: 16,
+    borderRadius: 8,
   },
 });
 

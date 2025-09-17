@@ -138,9 +138,11 @@ const AsignacionesDocenteView: React.FC = () => {
         try {
             const response = await api.get<SemestreInfo[]>(`/semestres/?carrera_id=${carreraId}`);
             setSemestres(response.data);
+            return response.data;
         } catch (err) {
             console.error('Error al cargar semestres:', err);
             setSemestres([]);
+            return [];
         }
     }, []);
 
@@ -198,10 +200,10 @@ const AsignacionesDocenteView: React.FC = () => {
             });
         }
         if (filterSemestreId) {
-            filtered = filtered.filter(asignacion => asignacion.materia_semestre_info?.semestre_nombre === semestres.find(s => s.id === filterSemestreId)?.nombre);
+            filtered = filtered.filter(asignacion => asignacion.materia_semestre_info?.semestre_nombre === filterSemestres.find(s => s.id === filterSemestreId)?.nombre);
         }
         setFilteredAsignaciones(filtered);
-    }, [filterCarreraId, filterSemestreId, asignacionesMaterias, carreras, semestres]);
+    }, [filterCarreraId, filterSemestreId, asignacionesMaterias, carreras, filterSemestres]);
 
     // Actualizar filterSemestres cuando cambia filterCarreraId
     useEffect(() => {
@@ -311,8 +313,8 @@ const AsignacionesDocenteView: React.FC = () => {
             const carrera = carreras.find(c => c.nombre === asignacion.materia_semestre_info?.carrera_semestre);
             if (carrera) {
                 setSelectedCarreraId(carrera.id);
-                await fetchSemestresByCarrera(carrera.id);
-                const semestre = semestres.find(s => s.nombre === asignacion.materia_semestre_info?.semestre_nombre);
+                const semestresFetched = await fetchSemestresByCarrera(carrera.id);
+                const semestre = semestresFetched.find(s => s.nombre === asignacion.materia_semestre_info?.semestre_nombre);
                 if (semestre) setSelectedSemestreId(semestre.id);
             }
             setNewGestion(asignacion.materia_semestre_info?.gestion || '');
@@ -422,10 +424,10 @@ const AsignacionesDocenteView: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 p-8">
+        <div className="min-h-screen bg-[#f8f9fa] p-8 font-sans">
             <div className="container mx-auto mt-8">
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-4xl font-extrabold text-blue-800">
+                    <h1 className="text-3xl font-extrabold text-[#002855]">
                         Listado de Asignaciones de Materias
                     </h1>
                     <button
@@ -443,7 +445,7 @@ const AsignacionesDocenteView: React.FC = () => {
                             setNewHoraFin('');
                             setSemestres([]);
                         }}
-                        className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition flex items-center"
+                        className="px-6 py-2 bg-[#28a745] text-white rounded-md hover:bg-[#218838] transition flex items-center"
                     >
                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg "><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                         Añadir Asignación de Materia
@@ -569,13 +571,13 @@ const AsignacionesDocenteView: React.FC = () => {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <button
                                                 onClick={() => handleUpdateClick(asignacion)}
-                                                className="text-indigo-600 hover:text-indigo-900 mr-4"
+                                                className="text-[#007bff] hover:text-[#0056b3] mr-4"
                                             >
                                                 Actualizar
                                             </button>
                                             <button
                                                 onClick={() => handleDeleteClick(asignacion.id)}
-                                                className="text-red-600 hover:text-red-900"
+                                                className="text-[#dc3545] hover:text-[#c82333]"
                                             >
                                                 Eliminar
                                             </button>
@@ -764,8 +766,8 @@ const AsignacionesDocenteView: React.FC = () => {
                         disabled={addFormLoading}
                         className={`w-full flex items-center justify-center px-4 py-2 rounded-lg text-white font-medium transition ${
                             addFormLoading
-                                ? 'bg-blue-400 cursor-not-allowed'
-                                : 'bg-blue-600 hover:bg-blue-700'
+                                ? 'bg-[#6c757d] cursor-not-allowed'
+                                : 'bg-[#007bff] hover:bg-[#0056b3]'
                         }`}
                     >
                         {addFormLoading ? (
@@ -909,8 +911,8 @@ const AsignacionesDocenteView: React.FC = () => {
                         disabled={updateFormLoading}
                         className={`w-full flex items-center justify-center px-4 py-2 rounded-lg text-white font-medium transition ${
                             updateFormLoading
-                                ? 'bg-blue-400 cursor-not-allowed'
-                                : 'bg-blue-600 hover:bg-blue-700'
+                                ? 'bg-[#6c757d] cursor-not-allowed'
+                                : 'bg-[#007bff] hover:bg-[#0056b3]'
                         }`}
                     >
                         {updateFormLoading ? (

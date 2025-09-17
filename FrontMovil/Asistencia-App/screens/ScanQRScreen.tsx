@@ -15,7 +15,7 @@ type RootStackParamList = {
 
 type ScanQRScreenProps = NativeStackScreenProps<RootStackParamList, 'ScanQR'>;
 
-const GEOFENCE_CENTER = { latitude: -17.397131, longitude: -66.220384 };
+const GEOFENCE_CENTER = { latitude: -17.378676, longitude: -66.147356 }; // Coordenadas del centro del geofence
 const GEOFENCE_RADIUS = 500; // 500 metros
 
 function calcularDistancia(lat1: number, lon1: number, lat2: number, lon2: number): number {

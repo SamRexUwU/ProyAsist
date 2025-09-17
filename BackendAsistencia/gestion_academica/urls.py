@@ -6,8 +6,8 @@ from .views import (
     CarreraViewSet, EstudianteViewSet, DocenteViewSet, AdministradorViewSet,
     SemestreViewSet, MateriaViewSet, MateriaSemestreViewSet, DocenteMateriaSemestreViewSet,
     SesionClaseViewSet, CredencialQRViewSet, PermisoAsistenciaViewSet, RegistroAsistenciaViewSet, ReporteViewSet, MisMateriasListView,
-    MisMateriasConEstudiantesListView, InscripcionViewSet, MisMateriasEstudianteView, csrf_token, get_csrf_token,
-    generar_reporte_asistencia, listar_reportes_admin, descargar_reporte_pdf, enviar_notificacion_prueba
+    MisMateriasConEstudiantesListView, InscripcionViewSet, MisMateriasEstudianteView, DiaEspecialViewSet, csrf_token, get_csrf_token,
+    generar_reporte_asistencia, listar_reportes_admin, descargar_reporte_pdf, enviar_notificacion_prueba, resumen_asistencias_general, get_filtros_asistencia
 )
 
 # Crea una instancia de DefaultRouter
@@ -29,6 +29,7 @@ router.register(r'permisos-asistencia', PermisoAsistenciaViewSet)
 router.register(r'registros-asistencia', RegistroAsistenciaViewSet, basename='registros-asistencia')
 router.register(r'reportes', ReporteViewSet)
 router.register(r'inscripciones', InscripcionViewSet, basename='inscripcion')
+router.register(r'dias-especiales', DiaEspecialViewSet, basename='dias-especiales')
 
 print("=== RUTAS GENERADAS POR EL ROUTER ===")
 for urlpattern in router.urls:
@@ -54,5 +55,7 @@ urlpatterns = [
     path('descargar-reporte/<int:reporte_id>/', descargar_reporte_pdf, name='descargar_reporte_pdf'),
 
     path('enviar-notificacion-prueba/', enviar_notificacion_prueba),
+    path('resumen-asistencias-general/', resumen_asistencias_general, name='resumen-asistencias-general'),
+    path('filtros-asistencia/', get_filtros_asistencia, name='get-filtros-asistencia'),
 ]
 

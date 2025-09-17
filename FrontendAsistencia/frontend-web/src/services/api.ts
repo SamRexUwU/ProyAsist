@@ -13,14 +13,19 @@ const api = axios.create({
 // Interceptor de peticiones para añadir el token de autenticación
 api.interceptors.request.use(
   (config) => {
+    // No añadir token para la ruta de login
+    if (config.url?.includes('/login/')) {
+      return config;
+    }
+
     // Obtenemos el token del sessionStorage
     const token = sessionStorage.getItem('authToken');
-    
+
     // Si existe el token, lo adjuntamos al encabezado Authorization
     if (token) {
-      config.headers['Authorization'] = `Token ${token}`;
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
-    
+
     return config;
   },
   (error) => {
@@ -35,7 +40,9 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Redirigir al login si no está autenticado
-      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('authToken');
+      sessionStorage.removeItem('refreshToken');
+      sessionStorage.removeItem('userRole');
       window.location.href = '/login';
     }
     return Promise.reject(error);

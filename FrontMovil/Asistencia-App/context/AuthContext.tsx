@@ -11,7 +11,7 @@ interface AuthState {
 
 interface AuthContextType {
   authState: AuthState;
-  login: (token: string, role: AuthState['userRole'], userId?: number) => void;
+  login: (accessToken: string, role: AuthState['userRole'], userId?: number, refreshToken?: string) => void;
   logout: () => void;
   checkAuthState: () => Promise<void>; // Método asíncrono para verificar estado
 }
@@ -56,22 +56,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     checkAuthState();
   }, []);
 
-  const login = async (token: string, role: AuthState['userRole'], userId?: number) => {
+  const login = async (accessToken: string, role: AuthState['userRole'], userId?: number, refreshToken?: string) => {
     try {
-      // Guardamos el token, rol y userId en AsyncStorage
-      await AsyncStorage.setItem('authToken', token);
-      await AsyncStorage.setItem('userRole', role || '');
+      // Validar que los parámetros requeridos no sean undefined
+      if (!accessToken || !role) {
+        console.error('Error: accessToken o role son undefined');
+        return;
+      }
+
+      // Guardamos los tokens, rol y userId en AsyncStorage
+      await AsyncStorage.setItem('authToken', accessToken);
+      await AsyncStorage.setItem('userRole', role);
       if (userId) {
         await AsyncStorage.setItem('userId', userId.toString());
       }
-      
+      if (refreshToken) {
+        await AsyncStorage.setItem('refreshToken', refreshToken);
+      }
+
       // Configurar el token en los headers de axios
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
-      setAuthState({ 
-        isAuthenticated: true, 
+      api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+
+      setAuthState({
+        isAuthenticated: true,
         userRole: role,
-        userId: userId || null 
+        userId: userId || null
       });
     } catch (error) {
       console.error('Error al guardar credenciales:', error);
@@ -81,11 +90,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = async () => {
     try {
       // Eliminamos todos los datos de AsyncStorage
-      await AsyncStorage.multiRemove(['authToken', 'userRole', 'userId']);
-      
+      await AsyncStorage.multiRemove(['authToken', 'refreshToken', 'userRole', 'userId']);
+
       // Limpiar el header de autorización
       delete api.defaults.headers.common['Authorization'];
-      
+
       setAuthState({ isAuthenticated: false, userRole: null, userId: null });
     } catch (error) {
       console.error('Error al cerrar sesión:', error);

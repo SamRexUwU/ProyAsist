@@ -29,6 +29,7 @@ import VerAsistenciaView from './views/VerAsistenciaView';
 import AsistenciasEstudianteView from './views/AsistenciasEstudianteView';
 import ReportesView from './views/ReportesView.tsx';
 import VerAsistenciaAdministradorView from './views/VerAsistenciaAdministradorView.tsx';
+import DiasEspecialesView from './views/DiasEspecialesView.tsx';
 
 // ProtectedRoute utiliza el estado del AuthContext para proteger las rutas.
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -99,6 +100,17 @@ const App: React.FC = () => {
               <RoleBasedRoute allowedRoles={['administrador']}>
                 <Navbar />
                 <ReportesView />
+              </RoleBasedRoute>
+            }
+          />
+
+          {/* RUTA PARA LA GESTIÓN DE DÍAS ESPECIALES */}
+          <Route
+            path="/dias-especiales"
+            element={
+              <RoleBasedRoute allowedRoles={['administrador']}>
+                <Navbar />
+                <DiasEspecialesView />
               </RoleBasedRoute>
             }
           />

@@ -41,6 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const logout = () => {
     // Eliminamos los datos de sessionStorage al cerrar sesión.
     sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('refreshToken');
     sessionStorage.removeItem('userRole');
     setAuthState({ isAuthenticated: false, userRole: null });
   };

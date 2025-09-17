@@ -5,7 +5,7 @@ from .models import (
     Usuario, Carrera, Semestre, Materia,
     Estudiante, Docente, Administrador,
     MateriaSemestre, DocenteMateriaSemestre, SesionClase,
-    CredencialQR, PermisoAsistencia, RegistroAsistencia, Reporte,Inscripcion
+    CredencialQR, PermisoAsistencia, RegistroAsistencia, Reporte, Inscripcion, DiaEspecial
 )
 
 # Serializador para el modelo Usuario
@@ -19,10 +19,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
-        # NO ELIMINES 'nombre' ni 'apellido' de validated_data aquí
-        # validated_data.pop('nombre', None) # <-- ¡ELIMINAR ESTA LÍNEA!
-        # validated_data.pop('apellido', None) # <-- ¡ELIMINAR ESTA LÍNEA!
-
+        
         usuario = Usuario.objects.create_user(
             email=validated_data['email'],
             nombre=validated_data['nombre'],
@@ -34,10 +31,6 @@ class UsuarioSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         password = validated_data.pop('password', None)
-
-        # NO ELIMINES 'nombre' ni 'apellido' de validated_data aquí
-        # validated_data.pop('nombre', None) # <-- ¡ELIMINAR ESTA LÍNEA!
-        # validated_data.pop('apellido', None) # <-- ¡ELIMINAR ESTA LÍNEA!
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -93,9 +86,6 @@ class EstudianteSerializer(serializers.ModelSerializer):
             'carrera_nombre', 'semestre_nombre',
               # Estos son los nombres que se usan para leer
         ]
-        # Si quieres que el serializador acepte los IDs para 'carrera' y 'semestre_actual'
-        # al crear/actualizar, puedes hacer que se ignoren en la salida.
-        # read_only_fields = ['carrera_nombre', 'semestre_nombre']
 
     # Método para obtener el nombre de la carrera
     def get_carrera_nombre(self, obj):
@@ -109,7 +99,12 @@ class EstudianteSerializer(serializers.ModelSerializer):
     @transaction.atomic # Asegura que si falla una parte, se deshace todo
     def create(self, validated_data):
         usuario_data = validated_data.pop('usuario') # Extrae los datos del usuario
-        
+
+        # Validar dominio del email para estudiantes
+        email = usuario_data.get('email')
+        if not email or not email.endswith('@est.emi.edu.bo'):
+            raise serializers.ValidationError({'usuario': {'email': 'El email debe terminar con @est.emi.edu.bo'}})
+
         usuario_serializer = UsuarioSerializer(data=usuario_data)
         usuario_serializer.is_valid(raise_exception=True)
         usuario = usuario_serializer.save()
@@ -146,15 +141,20 @@ class DocenteSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Extrae los datos anidados del usuario
         usuario_data = validated_data.pop('usuario')
-        
+
+        # Validar dominio del email para docentes
+        email = usuario_data.get('email')
+        if not email or not email.endswith('@doc.emi.edu.bo'):
+            raise serializers.ValidationError({'usuario': {'email': 'El email debe terminar con @doc.emi.edu.bo'}})
+
         # Crea el usuario usando el UsuarioSerializer.
         # Esto maneja el hasheo de contraseña y la creación del objeto.
         usuario = Usuario.objects.create_user(**usuario_data)
-        
+
         # Ahora, crea el objeto Docente y asigna el usuario creado.
         # **validated_data contiene la especialidad y cualquier otro campo del Docente.
         docente = Docente.objects.create(usuario=usuario, **validated_data)
-        
+
         return docente
 
     @transaction.atomic
@@ -579,3 +579,27 @@ class MateriaSemestreMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = MateriaSemestre
         fields = ['id', 'materia', 'gestion', 'dia_semana', 'hora_inicio', 'hora_fin']
+
+# Serializador para DiaEspecial
+class DiaEspecialSerializer(serializers.ModelSerializer):
+    creado_por_info = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = DiaEspecial
+        fields = ['id', 'fecha', 'tipo', 'descripcion', 'afecta_asistencia', 'creado_por', 'creado_por_info', 'fecha_creacion']
+        read_only_fields = ['fecha_creacion']
+
+    def get_creado_por_info(self, obj):
+        if obj.creado_por:
+            return {
+                'id': obj.creado_por.id,
+                'nombre_completo': obj.creado_por.usuario.get_full_name()
+            }
+        return None
+
+    def create(self, validated_data):
+        # Asignar automáticamente el administrador que crea el día especial
+        user = self.context['request'].user
+        if hasattr(user, 'administrador_perfil'):
+            validated_data['creado_por'] = user.administrador_perfil
+        return super().create(validated_data)

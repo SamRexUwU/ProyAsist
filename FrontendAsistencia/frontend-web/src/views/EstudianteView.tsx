@@ -63,6 +63,7 @@ const EstudianteView: React.FC = () => {
   const [addFormSuccess, setAddFormSuccess] = useState('');
   const [addFormLoading, setAddFormLoading] = useState(false);
   const [loadingDeps, setLoadingDeps] = useState(true);
+  const [emailError, setEmailError] = useState('');
 
   /* ---- QR Modal ---- */
   const [showQRModal, setShowQRModal] = useState(false);
@@ -137,8 +138,23 @@ const EstudianteView: React.FC = () => {
     }
   };
 
+  /* ---- Email validation ---- */
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNewEmail(value);
+    if (value && !value.endsWith('@est.emi.edu.bo')) {
+      setEmailError('El email debe terminar con @est.emi.edu.bo');
+    } else {
+      setEmailError('');
+    }
+  };
+
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (emailError) {
+      setAddFormError('Corrige los errores antes de guardar.');
+      return;
+    }
     if (!addSelectedCarrera || !addSelectedSemestre) {
       setAddFormError('Selecciona carrera y semestre.');
       return;
@@ -162,6 +178,7 @@ const EstudianteView: React.FC = () => {
       setNewEmail('');
       setNewPassword('');
       setNewCodigoInstitucional('');
+      setEmailError('');
       fetchStudents();
       setTimeout(() => {
         setShowAddModal(false);
@@ -367,10 +384,13 @@ const EstudianteView: React.FC = () => {
               <input
                 type="email"
                 value={newEmail}
-                onChange={(e) => setNewEmail(e.target.value)}
+                onChange={handleEmailChange}
                 required
                 className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#002855]"
               />
+              {emailError && (
+                <p className="text-red-600 text-sm mt-1">{emailError}</p>
+              )}
             </div>
 
             {/* Password */}

@@ -7,7 +7,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 
-const BASE_URL = 'http://192.168.100.5:8000';
+const BASE_URL = 'http://10.4.2.133:8000';
 const LOGIN_URL = `${BASE_URL}/api/login/`;
 const CSRF_TOKEN_URL = `${BASE_URL}/api/csrf_token/`;
 
@@ -19,7 +19,8 @@ interface LoginCredentials {
 }
 
 interface LoginResponse {
-  token: string;
+  access: string;
+  refresh: string;
   user_id: number;
   email: string;
   role: 'administrador' | 'docente' | 'estudiante';
@@ -128,9 +129,9 @@ const LoginScreen: React.FC = () => {
         withCredentials: true,
       });
 
-      const { token, user_id, role } = response.data;
+      const { access, refresh, user_id, role } = response.data;
 
-      await login(token, role, user_id);
+      await login(access, role, user_id, refresh);
 
       const pushToken = await obtenerPushToken();
       if (pushToken && csrfToken) {

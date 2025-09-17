@@ -3,10 +3,23 @@ import React, { useState } from 'react';
 import { Link, useNavigate, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
+type RouteWithSub = {
+  label: string;
+  sub: { path: string; label: string; }[];
+};
+
+type RouteNormal = {
+  path: string;
+  label: string;
+};
+
+type RouteItem = RouteWithSub | RouteNormal;
+
 const Navbar: React.FC = () => {
   const { authState, logout } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownsOpen, setDropdownsOpen] = useState({ academico: false, usuarios: false });
 
   const handleLogout = () => {
     logout();
@@ -17,25 +30,30 @@ const Navbar: React.FC = () => {
     return null;
   }
 
-  const adminRoutes = [
+  const adminRoutes: RouteItem[] = [
     { path: '/home', label: 'Inicio' },
-    { path: '/carreras', label: 'Carreras' },
-    { path: '/semestres', label: 'Semestres' },
-    { path: '/materias', label: 'Materias' },
+    { label: 'Académico', sub: [
+      { path: '/carreras', label: 'Carreras' },
+      { path: '/semestres', label: 'Semestres' },
+      { path: '/materias', label: 'Materias' },
+      { path: '/dias-especiales', label: 'Días Especiales' },
+    ] },
     { path: '/docentes-materias-semestre', label: 'Asignación de Docentes' },
-    { path: '/docentes', label: 'Docentes' },
-    { path: '/students', label: 'Estudiantes' },
+    { label: 'Usuarios', sub: [
+      { path: '/docentes', label: 'Docentes' },
+      { path: '/students', label: 'Estudiantes' },
+    ] },
     { path: '/reportes', label: 'Reportes' },
     { path: '/asistencias-estudiante', label: 'Asistencias de Estudiantes' },
   ];
 
-  const studentRoutes = [
+  const studentRoutes: RouteItem[] = [
     { path: '/home', label: 'Inicio' },
     { path: '/mis-materias-estudiante', label: 'Mis Clases' },
     { path: '/mis-asistencias', label: 'Mis Asistencias' },
   ];
 
-  const docenteRoutes = [
+  const docenteRoutes: RouteItem[] = [
     { path: '/home', label: 'Inicio' },
     { path: '/mis-materias', label: 'Mis Materias' },
     { path: '/ver-asistencia', label: 'Ver Asistencia' },
@@ -56,19 +74,11 @@ const Navbar: React.FC = () => {
           to="/home"
           className="flex items-center flex-shrink-0 text-white mr-6"
         >
-          <svg
-            className="h-8 w-8 mr-2 text-[#ffc72c]"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5s3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18s-3.332.477-4.5 1.253"
-            />
-          </svg>
+          <img
+            src="/CASTILLO-AMARILLO.png"
+            alt="Castillo Amarillo Logo"
+            className="h-8 w-8 mr-2"
+          />
           <span className="font-bold text-xl tracking-wide">
             Sistema de Asistencia
           </span>
@@ -98,21 +108,59 @@ const Navbar: React.FC = () => {
           }`}
         >
           <div className="text-sm lg:flex-grow flex flex-col lg:flex-row lg:items-center">
-            {getRoutes().map((route) => (
-              <NavLink
-                key={route.path}
-                to={route.path}
-                className={({ isActive }) =>
-                  `block mt-4 lg:inline-block lg:mt-0 mr-4 px-3 py-2 rounded transition-colors duration-300 ${
-                    isActive
-                      ? 'bg-[#ffc72c] text-[#002855] font-semibold'
-                      : 'text-white hover:bg-[#ffc72c] hover:text-[#002855]'
-                  }`
-                }
-                onClick={() => setIsOpen(false)}
-              >
-                {route.label}
-              </NavLink>
+            {getRoutes().map((route, index) => (
+              'sub' in route ? (() => {
+                const r = route as RouteWithSub;
+                return (
+                  <div key={index} className="relative mt-4 lg:mt-0 mr-4">
+                    <button
+                      onClick={() => setDropdownsOpen(prev => ({ ...prev, [r.label === 'Académico' ? 'academico' : 'usuarios']: !prev[r.label === 'Académico' ? 'academico' : 'usuarios'] }))}
+                      className="block lg:inline-block px-3 py-2 rounded transition-colors duration-300 text-white hover:bg-[#ffc72c] hover:text-[#002855]"
+                    >
+                      {r.label}
+                    </button>
+                    {dropdownsOpen[r.label === 'Académico' ? 'academico' : 'usuarios'] && (
+                      <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+                        {r.sub.map((subRoute) => (
+                          <NavLink
+                            key={subRoute.path}
+                            to={subRoute.path}
+                            className={({ isActive }) =>
+                              `block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${
+                                isActive ? 'bg-gray-100 font-semibold' : ''
+                              }`
+                            }
+                            onClick={() => {
+                              setDropdownsOpen({ academico: false, usuarios: false });
+                              setIsOpen(false);
+                            }}
+                          >
+                            {subRoute.label}
+                          </NavLink>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })() : (() => {
+                const r = route as RouteNormal;
+                return (
+                  <NavLink
+                    key={r.path}
+                    to={r.path}
+                    className={({ isActive }) =>
+                      `block mt-4 lg:inline-block lg:mt-0 mr-4 px-3 py-2 rounded transition-colors duration-300 ${
+                        isActive
+                          ? 'bg-[#ffc72c] text-[#002855] font-semibold'
+                          : 'text-white hover:bg-[#ffc72c] hover:text-[#002855]'
+                      }`
+                    }
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {r.label}
+                  </NavLink>
+                );
+              })()
             ))}
           </div>
 

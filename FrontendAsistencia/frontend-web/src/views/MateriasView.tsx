@@ -9,14 +9,9 @@ interface Materia {
   nombre: string;
 }
 
-interface Carrera {
-  id: number;
-  nombre: string;
-}
-
 const MateriasView: React.FC = () => {
   const [materias, setMaterias] = useState<Materia[]>([]);
-  const [carreras, setCarreras] = useState<Carrera[]>([]);
+
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,12 +26,8 @@ const MateriasView: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [materiasRes, carrerasRes] = await Promise.all([
-          api.get<Materia[]>('/materias/'),
-          api.get<Carrera[]>('/carreras/'),
-        ]);
+        const materiasRes = await api.get<Materia[]>('/materias/');
         setMaterias(materiasRes.data);
-        setCarreras(carrerasRes.data);
       } catch (err) {
         console.error('Error al cargar datos:', err);
         setError('No se pudieron cargar los datos. Por favor, intenta de nuevo.');
@@ -80,7 +71,7 @@ const MateriasView: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="container mx-auto mt-8">
-        <h1 className="text-4xl font-extrabold text-blue-800 mb-6">Administración de Materias y Carreras</h1>
+        <h1 className="text-4xl font-extrabold text-blue-800 mb-6">Administración de Materias</h1>
         
         {/* Sección de Botones para Abrir Modales */}
         <div className="flex space-x-4 mb-8">
@@ -90,20 +81,6 @@ const MateriasView: React.FC = () => {
           >
             Añadir Materia
           </button>
-        </div>
-
-        {/* Sección de listado de Carreras */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Carreras Disponibles</h2>
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-            <ul className="divide-y divide-gray-200">
-              {carreras.map(carrera => (
-                <li key={carrera.id} className="p-4 hover:bg-gray-50 transition">
-                  {carrera.nombre}
-                </li>
-              ))}
-            </ul>
-          </div>
         </div>
 
         {/* Sección de listado de Materias */}

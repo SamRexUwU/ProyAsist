@@ -18,11 +18,14 @@ export const useLogin = () => {
 
     try {
       const response = await api.post('/login/', { email, password });
-      const { token, role } = response.data;
-      
-      if (token && role) {
-        login(token, role); // La función de login ahora guarda en sessionStorage.
-        navigate('/home'); 
+      const { access, refresh, role } = response.data;
+
+      if (access && role) {
+        // Store both tokens
+        sessionStorage.setItem('authToken', access);
+        sessionStorage.setItem('refreshToken', refresh);
+        login(access, role); // La función de login ahora guarda en sessionStorage.
+        navigate('/home');
       } else {
         setError('Respuesta del servidor incompleta. Por favor, intenta de nuevo.');
       }

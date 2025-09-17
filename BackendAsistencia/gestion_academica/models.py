@@ -405,3 +405,40 @@ class Inscripcion(models.Model):
 
     def __str__(self):
         return f"{self.estudiante} inscrito en {self.materia_semestre}"
+
+class DiaEspecial(models.Model):
+    fecha = models.DateField(unique=True)
+    tipo = models.CharField(max_length=20, choices=[
+        ('FERIADO', 'Feriado'),
+        ('SIN_CLASES', 'Día sin clases'),
+        ('SUSPENSION', 'Suspensión de actividades')
+    ])
+    descripcion = models.CharField(max_length=200)
+    afecta_asistencia = models.BooleanField(default=True)
+    creado_por = models.ForeignKey(Administrador, on_delete=models.SET_NULL, null=True, blank=True, related_name='dias_especiales_creados')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Día Especial"
+        verbose_name_plural = "Días Especiales"
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"{self.fecha} - {self.get_tipo_display()}: {self.descripcion}"
+
+    @staticmethod
+    def es_dia_especial(fecha):
+        """Verifica si una fecha es un día especial que afecta asistencia"""
+        return DiaEspecial.objects.filter(
+            fecha=fecha,
+            afecta_asistencia=True
+        ).exists()
+
+    @staticmethod
+    def get_dias_especiales_rango(fecha_inicio, fecha_fin):
+        """Obtiene todos los días especiales en un rango de fechas"""
+        return DiaEspecial.objects.filter(
+            fecha__gte=fecha_inicio,
+            fecha__lte=fecha_fin,
+            afecta_asistencia=True
+        ).values_list('fecha', flat=True)

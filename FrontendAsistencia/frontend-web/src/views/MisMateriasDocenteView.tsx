@@ -55,6 +55,12 @@ const MisMateriasDocenteView: React.FC = () => {
     const [showEstudiantesModal, setShowEstudiantesModal] = useState(false);
     const [selectedEstudiantes, setSelectedEstudiantes] = useState<Estudiante[]>([]);
 
+    // Estado para controlar sesiones ya creadas o en proceso para evitar llamadas repetidas
+    const [sesionesProcesadas, setSesionesProcesadas] = useState<{[key: number]: boolean}>({});
+
+    // Estado para verificar si hoy es un día especial
+    const [isDiaEspecial, setIsDiaEspecial] = useState(false);
+
     useEffect(() => {
         const fetchMisMaterias = async () => {
             try {
@@ -73,7 +79,19 @@ const MisMateriasDocenteView: React.FC = () => {
                 setLoading(false);
             }
         };
+
+        const fetchDiaEspecial = async () => {
+            try {
+                const fecha = moment().format('YYYY-MM-DD');
+                const response = await api.get(`/dias-especiales/verificar-fecha/?fecha=${fecha}`);
+                setIsDiaEspecial(response.data.es_dia_especial);
+            } catch (err) {
+                console.error('Error al verificar día especial:', err);
+            }
+        };
+
         fetchMisMaterias();
+        fetchDiaEspecial();
     }, [navigate]);
 
     useEffect(() => {
@@ -84,9 +102,38 @@ const MisMateriasDocenteView: React.FC = () => {
         return () => clearInterval(timer);
     }, []);
 
+    // Nuevo useEffect para crear sesión automáticamente cuando la clase está activa
+    useEffect(() => {
+        materias.forEach(materia => {
+            const diaActual = currentTime.format('dddd');
+            const diasMap: { [key: string]: string } = {
+                'Lunes': 'Monday', 'Martes': 'Tuesday', 'Miércoles': 'Wednesday',
+                'Jueves': 'Thursday', 'Viernes': 'Friday', 'Sábado': 'Saturday', 'Domingo': 'Sunday'
+            };
+            const diaMateriaEnIngles = diasMap[materia.dia_semana];
+            const horaActual = currentTime;
+            const horaInicioMateria = moment(materia.hora_inicio, 'HH:mm');
+            const horaFinMateria = moment(materia.hora_fin, 'HH:mm');
 
+            const isActive = diaMateriaEnIngles === diaActual && horaActual.isBetween(horaInicioMateria, horaFinMateria, undefined, '[)');
+
+            if (isActive && !sesionesProcesadas[materia.id] && !isDiaEspecial) {
+                // Marcar como procesada para evitar llamadas repetidas
+                setSesionesProcesadas(prev => ({ ...prev, [materia.id]: true }));
+                // Intentar crear sesión automáticamente
+                handleCrearSesion(materia);
+            }
+        });
+    }, [materias, currentTime]);
 
     const getMateriaStatus = (materia: MateriaDocente): { isActive: boolean; message: string; timeUntilActive?: string } => {
+        if (isDiaEspecial) {
+            return {
+                isActive: false,
+                message: 'Día especial - No se puede iniciar sesión'
+            };
+        }
+
         const diaActual = currentTime.format('dddd');
         const diaMateria = materia.dia_semana;
 

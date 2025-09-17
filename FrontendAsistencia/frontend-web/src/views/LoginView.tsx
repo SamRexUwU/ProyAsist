@@ -8,6 +8,11 @@ const LoginPage: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-950 to-indigo-800 px-4">
       <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-xl border border-gray-200">
         <div className="text-center mb-8">
+          <img
+            src="/emi.png"
+            alt="EMI Logo"
+            className="h-24 w-20 mx-auto mb-4"
+          />
           <h1 className="text-3xl font-bold text-gray-900">Sistema de Asistencia</h1>
           <p className="mt-2 text-sm text-gray-500">Ingresa con tu correo institucional</p>
         </div>

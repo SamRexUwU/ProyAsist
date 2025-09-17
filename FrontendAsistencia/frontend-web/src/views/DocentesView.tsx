@@ -33,6 +33,7 @@ const DocentesView: React.FC = () => {
   const [addFormError, setAddFormError] = useState('');
   const [addFormSuccess, setAddFormSuccess] = useState('');
   const [addFormLoading, setAddFormLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
 
   /* ---- Fetch ---- */
   const fetchDocentes = async () => {
@@ -64,9 +65,24 @@ const DocentesView: React.FC = () => {
     }
   };
 
+  /* ---- Email validation ---- */
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNewEmail(value);
+    if (value && !value.endsWith('@doc.emi.edu.bo')) {
+      setEmailError('El email debe terminar con @doc.emi.edu.bo');
+    } else {
+      setEmailError('');
+    }
+  };
+
   /* ---- Add docente ---- */
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (emailError) {
+      setAddFormError('Corrige los errores antes de guardar.');
+      return;
+    }
     setAddFormError('');
     setAddFormSuccess('');
     setAddFormLoading(true);
@@ -88,6 +104,7 @@ const DocentesView: React.FC = () => {
       setNewEmail('');
       setNewPassword('');
       setNewEspecialidad('');
+      setEmailError('');
       fetchDocentes();
       setTimeout(() => {
         setShowAddModal(false);
@@ -247,10 +264,13 @@ const DocentesView: React.FC = () => {
             <input
               type="email"
               value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
+              onChange={handleEmailChange}
               required
               className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#002855]"
             />
+            {emailError && (
+              <p className="text-red-600 text-sm mt-1">{emailError}</p>
+            )}
           </div>
 
           <div>

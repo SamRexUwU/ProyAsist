@@ -27,7 +27,7 @@ SECRET_KEY = config("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.100.5', '192.168.100.4', '127.0.0.1', 'localhost', '10.4.6.79' ]
+ALLOWED_HOSTS = ['192.168.100.5', '192.168.100.4', '127.0.0.1', 'localhost', '10.4.6.79', '10.4.2.133', ]
 
 AUTH_USER_MODEL = 'gestion_academica.Usuario'
 
@@ -137,12 +137,43 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # JWT Authentication
         'rest_framework.authentication.SessionAuthentication', # Para la interfaz de navegador
-        'rest_framework.authentication.TokenAuthentication',   # Para clientes API con token
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+}
+
+# JWT Settings
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': False,
+
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': config("SECRET_KEY"),
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+
+    'JTI_CLAIM': 'jti',
+
+    'SLIDING_TOKEN_REFRESH_EXP_CLAIM': 'refresh_exp',
+    'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
+    'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
 
 CORS_ALLOW_HEADERS = [
@@ -165,7 +196,9 @@ CORS_ALLOWED_ORIGINS = [
       "http://192.168.100.4:5173",
       "exp://192.168.100.5:19000",
        "http://localhost:19006",
-        "http://10.4.6.79:5173", # Otra posible URL de desarrollo
+        "http://10.4.6.79:5173",
+         "http://10.4.2.133:5173",
+  # Otra posible URL de desarrollo
     # Si tu frontend se despliega en otro dominio, lo añadirías aquí:
     # "https://tu-dominio-frontend.com",
 ]

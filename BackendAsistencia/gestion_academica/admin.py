@@ -3,7 +3,7 @@ from .models import (
     Usuario, Carrera, Semestre, Materia,
     Estudiante, Docente, Administrador,
     MateriaSemestre, DocenteMateriaSemestre, SesionClase,
-    CredencialQR, PermisoAsistencia, RegistroAsistencia, Reporte
+    CredencialQR, PermisoAsistencia, RegistroAsistencia, Reporte, DiaEspecial
 )
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
@@ -36,3 +36,14 @@ admin.site.register(CredencialQR)
 admin.site.register(PermisoAsistencia)
 admin.site.register(RegistroAsistencia)
 admin.site.register(Reporte)
+
+@admin.register(DiaEspecial)
+class DiaEspecialAdmin(admin.ModelAdmin):
+    list_display = ['fecha', 'tipo', 'descripcion', 'afecta_asistencia', 'creado_por', 'fecha_creacion']
+    list_filter = ['tipo', 'afecta_asistencia', 'fecha', 'creado_por']
+    search_fields = ['descripcion', 'tipo']
+    ordering = ['-fecha']
+    date_hierarchy = 'fecha'
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('creado_por__usuario')
